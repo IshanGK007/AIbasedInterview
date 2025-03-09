@@ -65,8 +65,14 @@ const SignupForm = () => {
         if (profileError) throw profileError;
       }
 
-      // Redirect to login page or dashboard
-      navigate("/login");
+      // Redirect to login page with success message
+      navigate("/login", {
+        state: {
+          message:
+            "Account created successfully! Please log in with your credentials.",
+          type: "success",
+        },
+      });
     } catch (error: any) {
       setError(error.message || "An error occurred during signup");
       console.error("Signup error:", error);

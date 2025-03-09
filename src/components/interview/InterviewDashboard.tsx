@@ -15,12 +15,15 @@ import {
   History,
   Settings,
   CheckCircle2,
+  Calendar as CalendarIcon,
 } from "lucide-react";
 import ApiKeyDialog from "./ApiKeyDialog";
 import LanguageSelector from "./LanguageSelector";
 import NavBar from "./NavBar";
 import LearningPlanPanel from "./LearningPlanPanel";
 import LiveInterviewPanel from "./LiveInterviewPanel";
+import HistoryPanel from "./HistoryPanel";
+import CalendarPanel from "./CalendarPanel";
 
 interface InterviewDashboardProps {
   onSelectRole?: (role: string) => void;
@@ -74,7 +77,7 @@ const InterviewDashboard = ({
           onValueChange={setActiveTab}
           className="w-full"
         >
-          <TabsList className="grid w-full grid-cols-4 mb-8">
+          <TabsList className="grid w-full grid-cols-5 mb-8">
             <TabsTrigger value="new" className="flex items-center gap-2">
               <PlusCircle className="h-4 w-4" />
               New Interview
@@ -86,6 +89,10 @@ const InterviewDashboard = ({
             <TabsTrigger value="history" className="flex items-center gap-2">
               <History className="h-4 w-4" />
               History
+            </TabsTrigger>
+            <TabsTrigger value="calendar" className="flex items-center gap-2">
+              <CalendarIcon className="h-4 w-4" />
+              Calendar
             </TabsTrigger>
             <TabsTrigger value="learning" className="flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4" />
@@ -218,24 +225,11 @@ const InterviewDashboard = ({
           </TabsContent>
 
           <TabsContent value="history" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Interview History</CardTitle>
-                <CardDescription>
-                  Review your past interview sessions
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-12">
-                  <p className="text-muted-foreground mb-4">
-                    You haven't completed any interviews yet
-                  </p>
-                  <Button variant="outline" onClick={() => setActiveTab("new")}>
-                    Start Your First Interview
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <HistoryPanel />
+          </TabsContent>
+
+          <TabsContent value="calendar" className="space-y-4">
+            <CalendarPanel />
           </TabsContent>
 
           <TabsContent value="learning" className="space-y-4">

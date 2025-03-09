@@ -1,9 +1,14 @@
 import LoginForm from "@/components/auth/LoginForm";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { CheckCircle2, AlertCircle } from "lucide-react";
 
 const LoginPage = () => {
   const { user, loading } = useAuth();
+  const location = useLocation();
+  const message = location.state?.message;
+  const messageType = location.state?.type || "info";
 
   if (loading) {
     return (
@@ -26,6 +31,19 @@ const LoginPage = () => {
             Log in to continue your interview practice
           </p>
         </div>
+
+        {message && (
+          <Alert
+            className={`mb-4 ${messageType === "success" ? "bg-green-50 text-green-800 border-green-200" : "bg-amber-50 text-amber-800 border-amber-200"}`}
+          >
+            {messageType === "success" ? (
+              <CheckCircle2 className="h-4 w-4" />
+            ) : (
+              <AlertCircle className="h-4 w-4" />
+            )}
+            <AlertDescription>{message}</AlertDescription>
+          </Alert>
+        )}
         <LoginForm />
       </div>
     </div>

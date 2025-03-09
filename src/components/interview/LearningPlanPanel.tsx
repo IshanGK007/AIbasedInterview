@@ -16,6 +16,32 @@ import { Calendar as CalendarIcon, CheckCircle2, Clock } from "lucide-react";
 const LearningPlanPanel = () => {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [activeTab, setActiveTab] = useState("plan");
+  const [userProgress, setUserProgress] = useState<any>(null);
+
+  useEffect(() => {
+    // Fetch user progress data from Supabase or use mock data
+    fetchUserProgress();
+  }, []);
+
+  const fetchUserProgress = async () => {
+    try {
+      const { isSupabaseConfigured } = await import("@/lib/supabase");
+      if (!isSupabaseConfigured()) {
+        // Use mock data for demo
+        setUserProgress(learningPlan);
+        return;
+      }
+
+      // In a real implementation, this would fetch from Supabase
+      // For now, we'll use the mock data but simulate a real fetch
+      setTimeout(() => {
+        setUserProgress(learningPlan);
+      }, 500);
+    } catch (error) {
+      console.error("Error fetching user progress:", error);
+      setUserProgress(learningPlan);
+    }
+  };
 
   // Mock data for learning plan
   const learningPlan = {

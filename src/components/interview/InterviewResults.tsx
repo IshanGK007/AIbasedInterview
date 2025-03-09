@@ -65,7 +65,20 @@ const InterviewResults = ({
       const { data: userData } = await supabase.auth.getUser();
 
       if (userData?.user && questions.length > 0) {
-        // Save interview results
+        // Generate detailed analysis for each answer
+        const detailedAnalysis = answers.map((answer, index) => {
+          if (!answer.trim() && questionTypes[index] !== "coding") return null;
+
+          // For coding questions, use code answers
+          const content =
+            questionTypes[index] === "coding" ? codeAnswers[index] : answer;
+          if (!content.trim()) return null;
+
+          // Generate analysis based on question type and answer content
+          return analyzeAnswer(content, questionTypes[index], questions[index]);
+        });
+
+        // Save interview results with detailed analysis
         await supabase.from("interview_results").insert([
           {
             user_id: userData.user.id,
@@ -78,12 +91,240 @@ const InterviewResults = ({
             overall_score: mockResults.overallScore,
             metrics: mockResults.metrics,
             personality_traits: personalityProfile?.dominantTraits || [],
+            detailed_analysis: detailedAnalysis.filter(Boolean),
           },
         ]);
       }
     } catch (error) {
       console.error("Error saving results to Supabase:", error);
     }
+  };
+
+  // Function to analyze individual answers
+  const analyzeAnswer = (content: string, type: string, question: string) => {
+    // This would ideally use AI, but for now we'll use a rule-based approach
+    const wordCount = content.split(/\s+/).length;
+    const sentenceCount = content
+      .split(/[.!?]+/)
+      .filter((s) => s.trim().length > 0).length;
+    const avgSentenceLength = wordCount / (sentenceCount || 1);
+
+    let analysis = {
+      question,
+      type,
+      metrics: {
+        wordCount,
+        sentenceCount,
+        avgSentenceLength,
+        clarity: 0,
+        relevance: 0,
+        structure: 0,
+        depth: 0,
+      },
+      strengths: [] as string[],
+      improvements: [] as string[],
+      keywords: [] as string[],
+    };
+
+    // Analyze based on type
+    if (type === "behavioral") {
+      // Check for STAR method elements
+      const hasContext = /situation|context|background/i.test(content);
+      const hasAction = /action|approach|steps|implemented/i.test(content);
+      const hasResult =
+        /result|outcome|impact|improved|increased|decreased/i.test(content);
+
+      analysis.metrics.structure =
+        hasContext && hasAction && hasResult
+          ? 85
+          : (hasContext && hasAction) || (hasAction && hasResult)
+            ? 65
+            : hasAction
+              ? 45
+              : 30;
+
+      // Check for specificity
+      const hasSpecificDetails =
+        /\d+%|\d+ percent|increased by|decreased by|improved|specific|exactly|precisely/i.test(
+          content,
+        );
+      analysis.metrics.depth = hasSpecificDetails ? 75 : 50;
+
+      // Strengths and improvements
+      if (hasContext && hasAction && hasResult) {
+        analysis.strengths.push(
+          "Well-structured response using the STAR method",
+        );
+      } else {
+        analysis.improvements.push(
+          "Structure your answer using the STAR method (Situation, Task, Action, Result)",
+        );
+      }
+
+      if (hasSpecificDetails) {
+        analysis.strengths.push("Good use of specific details and metrics");
+      } else {
+        analysis.improvements.push(
+          "Include specific numbers and metrics to quantify your impact",
+        );
+      }
+
+      if (wordCount < 50) {
+        analysis.improvements.push(
+          "Expand your answer with more details about the situation and your actions",
+        );
+      } else if (wordCount > 300) {
+        analysis.improvements.push(
+          "Consider making your response more concise while maintaining key details",
+        );
+      } else {
+        analysis.strengths.push("Good answer length - detailed but concise");
+      }
+    } else if (type === "technical") {
+      // Check for technical depth
+      const hasTechnicalTerms =
+        /algorithm|framework|architecture|system|design|implementation|technology|concept|principle/i.test(
+          content,
+        );
+      const hasExplanation =
+        /because|therefore|this means|as a result|consequently|due to|explains|clarifies/i.test(
+          content,
+        );
+
+      analysis.metrics.depth =
+        hasTechnicalTerms && hasExplanation
+          ? 80
+          : hasTechnicalTerms
+            ? 60
+            : hasExplanation
+              ? 50
+              : 30;
+
+      // Check for clarity
+      analysis.metrics.clarity =
+        avgSentenceLength < 25 ? 75 : avgSentenceLength < 35 ? 60 : 40;
+
+      // Strengths and improvements
+      if (hasTechnicalTerms) {
+        analysis.strengths.push("Good use of technical terminology");
+      } else {
+        analysis.improvements.push(
+          "Include more technical terms relevant to the question",
+        );
+      }
+
+      if (hasExplanation) {
+        analysis.strengths.push("Clear explanations of technical concepts");
+      } else {
+        analysis.improvements.push(
+          "Explain why and how technical concepts work, not just what they are",
+        );
+      }
+
+      if (avgSentenceLength > 30) {
+        analysis.improvements.push(
+          "Break down complex sentences for better clarity",
+        );
+      }
+    } else if (type === "coding") {
+      // Check for code quality
+      const hasComments = /\/\/|\*\/|#|\*\*|--/i.test(content);
+      const hasErrorHandling =
+        /try|catch|if.*error|exception|throw|finally/i.test(content);
+      const hasOptimization =
+        /optimize|complexity|efficient|performance|O\(n\)|O\(log n\)/i.test(
+          content,
+        );
+
+      analysis.metrics.depth =
+        (hasComments ? 25 : 0) +
+        (hasErrorHandling ? 25 : 0) +
+        (hasOptimization ? 30 : 0) +
+        20;
+
+      // Strengths and improvements
+      if (hasComments) {
+        analysis.strengths.push("Good code documentation with comments");
+      } else {
+        analysis.improvements.push(
+          "Add comments to explain your approach and key parts of the code",
+        );
+      }
+
+      if (hasErrorHandling) {
+        analysis.strengths.push("Includes error handling for robustness");
+      } else {
+        analysis.improvements.push(
+          "Consider adding error handling for edge cases",
+        );
+      }
+
+      if (hasOptimization) {
+        analysis.strengths.push(
+          "Shows awareness of code optimization and complexity",
+        );
+      } else {
+        analysis.improvements.push(
+          "Discuss the time and space complexity of your solution",
+        );
+      }
+    }
+
+    // Calculate relevance based on question keywords in answer
+    const questionWords = question
+      .toLowerCase()
+      .split(/\W+/)
+      .filter((w) => w.length > 3);
+    const answerWords = content.toLowerCase().split(/\W+/);
+    const matchingWords = questionWords.filter((word) =>
+      answerWords.includes(word),
+    );
+    analysis.metrics.relevance = Math.min(
+      100,
+      Math.round((matchingWords.length / questionWords.length) * 100) + 20,
+    );
+
+    // Extract keywords from answer
+    const commonWords = new Set([
+      "the",
+      "and",
+      "that",
+      "this",
+      "with",
+      "for",
+      "was",
+      "were",
+      "have",
+      "had",
+      "not",
+      "are",
+      "from",
+    ]);
+    const potentialKeywords = answerWords.filter(
+      (word) => word.length > 4 && !commonWords.has(word),
+    );
+
+    // Count word frequency
+    const wordFrequency: Record<string, number> = {};
+    potentialKeywords.forEach((word) => {
+      wordFrequency[word] = (wordFrequency[word] || 0) + 1;
+    });
+
+    // Get top keywords
+    analysis.keywords = Object.entries(wordFrequency)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([word]) => word);
+
+    // Overall clarity score
+    analysis.metrics.clarity = Math.round(
+      (analysis.metrics.structure +
+        analysis.metrics.depth +
+        analysis.metrics.relevance) /
+        3,
+    );
+
+    return analysis;
   };
 
   if (showDetailedAnalysis) {
@@ -321,42 +562,160 @@ const InterviewResults = ({
                   ))}
                 </TabsList>
 
-                {mockResults.questionFeedback.map((feedback, index) => (
-                  <TabsContent
-                    key={index}
-                    value={`q${index}`}
-                    className="space-y-4"
-                  >
-                    <div className="p-4 bg-muted rounded-lg">
-                      <h3 className="font-medium mb-2">Question:</h3>
-                      <p>{feedback.question}</p>
-                    </div>
+                {mockResults.questionFeedback.map((feedback, index) => {
+                  // Generate detailed metrics for each answer
+                  const answerText = answers[index] || "";
+                  const codeText = codeAnswers[index] || "";
+                  const content =
+                    questionTypes[index] === "coding" ? codeText : answerText;
+                  const detailedMetrics = analyzeAnswer(
+                    content,
+                    questionTypes[index] || "behavioral",
+                    feedback.question,
+                  );
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="p-4 border rounded-lg">
-                        <h3 className="font-medium mb-2 text-green-600">
-                          Strengths:
-                        </h3>
-                        <ul className="list-disc pl-5 space-y-1">
-                          {feedback.strengths.map((strength, i) => (
-                            <li key={i}>{strength}</li>
-                          ))}
-                        </ul>
+                  return (
+                    <TabsContent
+                      key={index}
+                      value={`q${index}`}
+                      className="space-y-4"
+                    >
+                      <div className="p-4 bg-muted rounded-lg">
+                        <h3 className="font-medium mb-2">Question:</h3>
+                        <p>{feedback.question}</p>
+                        <div className="mt-3 pt-3 border-t border-muted-foreground/20">
+                          <h4 className="text-sm font-medium mb-2">
+                            Your Answer:
+                          </h4>
+                          <p className="text-sm">
+                            {questionTypes[index] === "coding" ? (
+                              <pre className="bg-muted-foreground/10 p-2 rounded overflow-auto text-xs">
+                                {codeText || "No code submitted"}
+                              </pre>
+                            ) : (
+                              answerText || "No answer recorded"
+                            )}
+                          </p>
+                        </div>
                       </div>
 
-                      <div className="p-4 border rounded-lg">
-                        <h3 className="font-medium mb-2 text-amber-600">
-                          Areas for Improvement:
-                        </h3>
-                        <ul className="list-disc pl-5 space-y-1">
-                          {feedback.improvements.map((improvement, i) => (
-                            <li key={i}>{improvement}</li>
-                          ))}
-                        </ul>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-4">
+                          <div className="p-4 border rounded-lg">
+                            <h3 className="font-medium mb-3 text-green-600">
+                              Strengths:
+                            </h3>
+                            <ul className="list-disc pl-5 space-y-1">
+                              {detailedMetrics.strengths.length > 0
+                                ? detailedMetrics.strengths.map(
+                                    (strength, i) => (
+                                      <li key={i}>{strength}</li>
+                                    ),
+                                  )
+                                : feedback.strengths.map((strength, i) => (
+                                    <li key={i}>{strength}</li>
+                                  ))}
+                            </ul>
+                          </div>
+
+                          <div className="p-4 border rounded-lg">
+                            <h3 className="font-medium mb-3 text-blue-600">
+                              Key Metrics:
+                            </h3>
+                            <div className="space-y-3">
+                              {Object.entries(detailedMetrics.metrics)
+                                .filter(
+                                  ([key]) =>
+                                    typeof detailedMetrics.metrics[key] ===
+                                      "number" &&
+                                    key !== "wordCount" &&
+                                    key !== "sentenceCount",
+                                )
+                                .map(([key, value]) => (
+                                  <div key={key}>
+                                    <div className="flex justify-between mb-1">
+                                      <span className="text-sm capitalize">
+                                        {key.replace(/([A-Z])/g, " $1")}
+                                      </span>
+                                      <span className="text-sm">{value}%</span>
+                                    </div>
+                                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                                      <div
+                                        className={`h-full ${Number(value) >= 70 ? "bg-green-500" : Number(value) >= 50 ? "bg-yellow-500" : "bg-red-500"}`}
+                                        style={{ width: `${value}%` }}
+                                      />
+                                    </div>
+                                  </div>
+                                ))}
+                              <div className="flex justify-between text-xs text-muted-foreground mt-2">
+                                <span>
+                                  Words: {detailedMetrics.metrics.wordCount}
+                                </span>
+                                <span>
+                                  Sentences:{" "}
+                                  {detailedMetrics.metrics.sentenceCount}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                          <div className="p-4 border rounded-lg">
+                            <h3 className="font-medium mb-3 text-amber-600">
+                              Areas for Improvement:
+                            </h3>
+                            <ul className="list-disc pl-5 space-y-1">
+                              {detailedMetrics.improvements.length > 0
+                                ? detailedMetrics.improvements.map(
+                                    (improvement, i) => (
+                                      <li key={i}>{improvement}</li>
+                                    ),
+                                  )
+                                : feedback.improvements.map(
+                                    (improvement, i) => (
+                                      <li key={i}>{improvement}</li>
+                                    ),
+                                  )}
+                            </ul>
+                          </div>
+
+                          {detailedMetrics.keywords.length > 0 && (
+                            <div className="p-4 border rounded-lg">
+                              <h3 className="font-medium mb-3 text-purple-600">
+                                Key Topics in Your Answer:
+                              </h3>
+                              <div className="flex flex-wrap gap-2">
+                                {detailedMetrics.keywords.map((keyword, i) => (
+                                  <Badge
+                                    key={i}
+                                    variant="outline"
+                                    className="bg-purple-50"
+                                  >
+                                    {keyword}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="p-4 border rounded-lg">
+                            <h3 className="font-medium mb-3 text-indigo-600">
+                              AI Recommendations:
+                            </h3>
+                            <p className="text-sm">
+                              {detailedMetrics.metrics.clarity >= 75
+                                ? "Your answer demonstrates strong communication skills. Continue to use specific examples and clear structure in your responses."
+                                : detailedMetrics.metrics.clarity >= 50
+                                  ? "Your answer is solid but could be improved with more specific details and a clearer structure. Consider using the STAR method for behavioral questions."
+                                  : "Focus on improving the structure and clarity of your answer. Be more specific and directly address the question asked."}
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </TabsContent>
-                ))}
+                    </TabsContent>
+                  );
+                })}
               </Tabs>
             </CardContent>
           </Card>
