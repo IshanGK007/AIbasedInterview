@@ -262,7 +262,12 @@ const InterviewSession = ({
 
   const saveInterviewToSupabase = async () => {
     try {
-      const { supabase } = await import("@/lib/supabase");
+      const { supabase, isSupabaseConfigured } = await import("@/lib/supabase");
+
+      if (!isSupabaseConfigured()) {
+        console.log("Supabase not configured, skipping save to database");
+        return;
+      }
 
       const interviewData = {
         questions,

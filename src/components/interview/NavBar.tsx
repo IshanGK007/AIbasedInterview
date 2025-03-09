@@ -11,7 +11,8 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Home, Settings, User, LogOut, Menu } from "lucide-react";
 import LanguageSelector from "./LanguageSelector";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 interface NavBarProps {
   onSettingsClick?: () => void;
@@ -20,6 +21,7 @@ interface NavBarProps {
 const NavBar = ({ onSettingsClick = () => {} }: NavBarProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
 
   return (
     <nav className="bg-background border-b py-3 px-4 sticky top-0 z-10">
@@ -33,28 +35,29 @@ const NavBar = ({ onSettingsClick = () => {} }: NavBarProps) => {
           >
             <Menu className="h-5 w-5" />
           </Button>
-          <h1
-            className="text-xl font-bold cursor-pointer"
-            onClick={() => navigate("/")}
-          >
-            AI Interview Coach
-          </h1>
+          <Link to="/">
+            <h1 className="text-xl font-bold cursor-pointer">
+              AI Interview Coach
+            </h1>
+          </Link>
         </div>
 
         <div className="hidden md:flex items-center space-x-6">
-          <Button variant="ghost" onClick={() => navigate("/")}>
-            <Home className="h-4 w-4 mr-2" />
-            Dashboard
-          </Button>
-          <Button variant="ghost" onClick={() => navigate("/practice")}>
-            Practice
-          </Button>
-          <Button variant="ghost" onClick={() => navigate("/analytics")}>
-            Analytics
-          </Button>
-          <Button variant="ghost" onClick={() => navigate("/history")}>
-            History
-          </Button>
+          <Link to="/">
+            <Button variant="ghost">
+              <Home className="h-4 w-4 mr-2" />
+              Dashboard
+            </Button>
+          </Link>
+          <Link to="/setup">
+            <Button variant="ghost">Practice</Button>
+          </Link>
+          <Link to="/analytics">
+            <Button variant="ghost">Analytics</Button>
+          </Link>
+          <Link to="/history">
+            <Button variant="ghost">History</Button>
+          </Link>
         </div>
 
         <div className="flex items-center gap-3">
@@ -80,7 +83,7 @@ const NavBar = ({ onSettingsClick = () => {} }: NavBarProps) => {
                 API Settings
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={signOut}>
                 <LogOut className="h-4 w-4 mr-2" />
                 Log out
               </DropdownMenuItem>
@@ -93,19 +96,27 @@ const NavBar = ({ onSettingsClick = () => {} }: NavBarProps) => {
       {isMenuOpen && (
         <div className="md:hidden absolute top-full left-0 right-0 bg-background border-b shadow-lg p-4">
           <div className="flex flex-col space-y-2">
-            <Button variant="ghost" onClick={() => navigate("/")}>
-              <Home className="h-4 w-4 mr-2" />
-              Dashboard
-            </Button>
-            <Button variant="ghost" onClick={() => navigate("/practice")}>
-              Practice
-            </Button>
-            <Button variant="ghost" onClick={() => navigate("/analytics")}>
-              Analytics
-            </Button>
-            <Button variant="ghost" onClick={() => navigate("/history")}>
-              History
-            </Button>
+            <Link to="/">
+              <Button variant="ghost" className="w-full justify-start">
+                <Home className="h-4 w-4 mr-2" />
+                Dashboard
+              </Button>
+            </Link>
+            <Link to="/setup">
+              <Button variant="ghost" className="w-full justify-start">
+                Practice
+              </Button>
+            </Link>
+            <Link to="/analytics">
+              <Button variant="ghost" className="w-full justify-start">
+                Analytics
+              </Button>
+            </Link>
+            <Link to="/history">
+              <Button variant="ghost" className="w-full justify-start">
+                History
+              </Button>
+            </Link>
           </div>
         </div>
       )}

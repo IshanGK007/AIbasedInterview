@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Loader2, FileText } from "lucide-react";
 import { generateInterviewQuestions } from "@/lib/deepseek";
+import { generateJobSpecificQuestions } from "@/lib/jobSpecificQuestions";
 import ResumeAnalysis from "./ResumeAnalysis";
 import LanguageSelector from "./LanguageSelector";
 import NavBar from "./NavBar";
@@ -82,15 +83,66 @@ const InterviewSetup = ({
     setError(null);
 
     try {
-      const result = await generateInterviewQuestions(
-        role,
-        difficulty[0],
-        questionCount,
-        questionCategories,
-        resumeText || undefined,
-        industry || undefined,
-        interviewLanguage,
-      );
+      // First try to generate job-specific questions
+      let result;
+
+      try {
+        // Use job-specific questions generator first
+        result = generateJobSpecificQuestions(
+          role,
+          questionCount,
+          questionCategories,
+        );
+      } catch (jobSpecificError) {
+        console.error(
+          "Error generating job-specific questions:",
+          jobSpecificError,
+        );
+
+        // Fall back to DeepSeek API if job-specific generation fails
+        result = await generateInterviewQuestions(
+          role,
+          difficulty[0],
+          questionCount,
+          questionCategories,
+          resumeText || undefined,
+          industry || undefined,
+          interviewLanguage,
+        );
+      }
+
+      // Save interview configuration to Supabase
+      try {
+        const { supabase, isSupabaseConfigured } = await import(
+          "@/lib/supabase"
+        );
+
+        if (!isSupabaseConfigured()) {
+          console.log("Supabase not configured, skipping save to database");
+        } else {
+          const { data: userData } = await supabase.auth.getUser();
+
+          if (userData?.user) {
+            await supabase.from("interview_sessions").insert([
+              {
+                user_id: userData.user.id,
+                role: role,
+                industry: industry || null,
+                difficulty: difficulty[0],
+                question_count: questionCount,
+                categories: questionCategories,
+                language: interviewLanguage,
+                created_at: new Date().toISOString(),
+                status: "created",
+              },
+            ]);
+          }
+        }
+      } catch (dbError) {
+        console.error("Error saving interview configuration:", dbError);
+        // Continue even if saving to database fails
+      }
+
       onQuestionsGenerated(result);
       onStart();
     } catch (err) {
