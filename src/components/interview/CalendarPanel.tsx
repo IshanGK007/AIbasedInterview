@@ -27,8 +27,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar as CalendarIcon, Clock, Plus } from "lucide-react";
+import { Calendar as CalendarIcon, Clock, Plus, Mail } from "lucide-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { sendInterviewReminder } from "@/lib/emailService";
 
 interface ScheduledInterview {
   id: string;
@@ -277,6 +278,35 @@ const CalendarPanel = () => {
     }
   };
 
+  // Send email reminder for an interview
+  const handleSendReminder = async (id: string) => {
+    try {
+      if (!isSupabaseConfigured()) {
+        alert(
+          "Email functionality is not available in demo mode. In a real implementation, a reminder would be sent to your email.",
+        );
+        return;
+      }
+
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData?.user) {
+        alert("You must be logged in to send reminders");
+        return;
+      }
+
+      const success = await sendInterviewReminder(userData.user.id, id);
+
+      if (success) {
+        alert("Reminder has been sent to your email");
+      } else {
+        alert("Failed to send reminder. Please try again later.");
+      }
+    } catch (error) {
+      console.error("Error sending reminder:", error);
+      alert("An error occurred while sending the reminder");
+    }
+  };
+
   const handleDeleteInterview = async (id: string) => {
     try {
       if (!isSupabaseConfigured()) {
@@ -373,9 +403,19 @@ const CalendarPanel = () => {
                     </div>
                     <div className="flex gap-2">
                       {!isPastEvent(interview.scheduled_at) && (
-                        <Button variant="outline" size="sm">
-                          Start
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm">
+                            Start
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleSendReminder(interview.id)}
+                            title="Send email reminder"
+                          >
+                            <Mail className="h-4 w-4" />
+                          </Button>
+                        </div>
                       )}
                       <Button
                         variant="ghost"

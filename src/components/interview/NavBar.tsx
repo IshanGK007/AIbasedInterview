@@ -74,7 +74,7 @@ const NavBar = ({ onSettingsClick = () => {} }: NavBarProps) => {
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/profile")}>
                 <User className="h-4 w-4 mr-2" />
                 Profile
               </DropdownMenuItem>

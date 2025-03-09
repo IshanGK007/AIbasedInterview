@@ -10,14 +10,25 @@ import {
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Download, Share2, ArrowRight, Brain } from "lucide-react";
+import {
+  Download,
+  Share2,
+  ArrowRight,
+  Brain,
+  Mail,
+  FileText,
+} from "lucide-react";
 import InterviewAnalysis from "./InterviewAnalysis";
 import NavBar from "./NavBar";
 import {
   analyzePersonality,
   PersonalityProfile,
 } from "@/lib/personalityInsights";
-import { supabase } from "@/lib/supabase";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import {
+  generateAnalysisReport,
+  sendInterviewResults,
+} from "@/lib/emailService";
 
 interface InterviewResultsProps {
   onStartNew?: () => void;
@@ -53,6 +64,64 @@ const InterviewResults = ({
       saveResultsToSupabase();
     }
   }, [answers]);
+
+  // Handle downloading the analysis report
+  const handleDownloadReport = async () => {
+    try {
+      // Generate a unique ID for this result if we don't have one
+      const resultId = Math.random().toString(36).substring(2, 15);
+
+      // In a real implementation, we would use the actual result ID from the database
+      const reportBlob = await generateAnalysisReport(resultId);
+
+      if (reportBlob) {
+        // Create a download link
+        const url = URL.createObjectURL(reportBlob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `interview-analysis-${new Date().toISOString().split("T")[0]}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } else {
+        console.error("Failed to generate report");
+      }
+    } catch (error) {
+      console.error("Error downloading report:", error);
+    }
+  };
+
+  // Handle emailing the results
+  const handleEmailResults = async () => {
+    try {
+      if (!isSupabaseConfigured()) {
+        alert(
+          "Email functionality is not available in demo mode. In a real implementation, the results would be sent to your email.",
+        );
+        return;
+      }
+
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData?.user) {
+        alert("You must be logged in to email results");
+        return;
+      }
+
+      // In a real implementation, we would use the actual result ID from the database
+      const resultId = Math.random().toString(36).substring(2, 15);
+      const success = await sendInterviewResults(userData.user.id, resultId);
+
+      if (success) {
+        alert("Results have been sent to your email");
+      } else {
+        alert("Failed to send results. Please try again later.");
+      }
+    } catch (error) {
+      console.error("Error emailing results:", error);
+      alert("An error occurred while sending the results");
+    }
+  };
 
   const saveResultsToSupabase = async () => {
     try {
@@ -407,9 +476,19 @@ const InterviewResults = ({
               variant="outline"
               size="sm"
               className="flex items-center gap-1"
+              onClick={handleDownloadReport}
             >
               <Download className="h-4 w-4" />
               Export
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-1"
+              onClick={handleEmailResults}
+            >
+              <Mail className="h-4 w-4" />
+              Email Results
             </Button>
             <Button
               variant="outline"

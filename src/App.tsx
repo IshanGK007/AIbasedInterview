@@ -6,6 +6,7 @@ import { AuthProvider } from "./components/auth/AuthProvider";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
+import ProfilePage from "./pages/ProfilePage";
 import InterviewSetup from "./components/interview/InterviewSetup";
 import InterviewSession from "./components/interview/InterviewSession";
 import InterviewResults from "./components/interview/InterviewResults";
@@ -47,6 +48,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <InterviewResults />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <ProfilePage />
                 </ProtectedRoute>
               }
             />
